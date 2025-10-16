@@ -99,7 +99,7 @@ struct RecordingTranscribeView: View {
         .background(Color("mp-purple").ignoresSafeArea())
     }
 
-    // MARK: File Selection
+    // MARK: File selection
     private func selectFileAndTranscribe() {
         let panel = NSOpenPanel()
         panel.allowedFileTypes = ["wav", "m4a", "mp3", "mp4"]
@@ -134,5 +134,39 @@ struct RecordingTranscribeView: View {
                 isTranscribing = false
             }
         }
+    }
+}
+
+extension LectureTranscriber {
+
+    /// Transcribe any supported audio/video file and provide live updates via closure
+    func transcribeFile(
+        url: URL,
+        chunkSeconds: Double = 30,
+        onUpdate: @escaping (_ volatile: AttributedString, _ finalized: AttributedString, _ progress: Double) -> Void
+    ) async throws {
+        
+        // Prepare transcriber
+        try await setup()
+        
+        let audioFile = try AVAudioFile(forReading: url)
+        let format = audioFile.processingFormat
+        let bufferCapacity = AVAudioFrameCount(format.sampleRate * chunkSeconds)
+        
+        // Stream audio in chunks
+        while audioFile.framePosition < audioFile.length {
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: bufferCapacity) else { break }
+            try audioFile.read(into: buffer)
+            if buffer.frameLength == 0 { break }
+            
+            try await streamAudioToTranscriber(buffer)
+            
+            // Progress callback
+            let progress = Double(audioFile.framePosition) / Double(audioFile.length)
+            onUpdate(volatileTranscript, finalizedTranscript, progress)
+        }
+        
+        try await finishTranscribing()
+        onUpdate(volatileTranscript, finalizedTranscript, 1.0)
     }
 }
