@@ -37,29 +37,35 @@ struct LiveTranscribeView: View {
                 .foregroundColor(.white)
                 .padding(.top, 8)
             
-            // MARK: Control Buttons
+            // MARK: Description / Instructions
+            Text("Press 'Start Recording' to record your lecture. Once finished, press 'Stop Recording'. You can replay the recording using 'Play'. The transcription will appear below in real-time.")
+                .font(.custom("Manrope", size: 14))
+                .foregroundColor(.white.opacity(0.8))
+                .padding(.top, 4)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+            
+            // MARK: Controls
             HStack(spacing: 24) {
-                // Recording Button
                 SolidButton(
                     title: isRecording ? "Stop Recording" : "Start Recording",
                     systemImage: isRecording ? "stop.circle.fill" : "record.circle",
-                    bgColor: isRecording ? .red : .green, // use bgColor
+                    bgColor: isRecording ? Color(.burntsienna) : Color(.seaGreen),
+                    textColor: .white,
                     action: handleRecordingButtonTap
                 )
                 
-                // Play Button (disabled while recording)
                 SolidButton(
                     title: isPlaying ? "Stop" : "Play",
                     systemImage: isPlaying ? "stop.fill" : "play.fill",
-                    bgColor: .blue, // must match struct param name
+                    bgColor: isPlaying ? Color(.burntsienna) : .white,
+                    textColor: isPlaying ? .white : .black,
                     action: handlePlayButtonTap,
-                    isDisabled: isRecording // disables while recording
+                    isDisabled: isRecording
                 )
             }
-
             .padding(.bottom, 10)
 
-            // MARK: Transcript ScrollView
             // MARK: Transcript ScrollView
             if let speechTranscriber {
                 ScrollView {
@@ -71,8 +77,8 @@ struct LiveTranscribeView: View {
                             Text(line)
                                 .font(.custom("Manrope", size: 16))
                                 .foregroundColor(.white)
-                                .lineSpacing(4)
                                 .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                     .padding()
@@ -105,7 +111,6 @@ struct LiveTranscribeView: View {
     // MARK: Playback / Recording
     func handlePlayback() {
         guard lecture.file_url != nil else { return }
-
         if isPlaying {
             recorder.playRecording()
             timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
@@ -126,7 +131,6 @@ struct LiveTranscribeView: View {
                 isRecording = false
             }
         } else {
-            // Reset for new session
             let newTranscriber = LectureTranscriber(lecture: $lecture)
             let newRecorder = AudioRecorder(transcriber: newTranscriber, lecture: $lecture)
             speechTranscriber = newTranscriber
@@ -163,82 +167,5 @@ struct LiveTranscribeView: View {
         let end = attributedStringRun.audioTimeRange?.end.seconds
         guard let start, let end else { return false }
         return currentPlaybackTime >= start && currentPlaybackTime < end
-    }
-
-    @ViewBuilder
-    func textWithHighlighting(attributedString: AttributedString) -> some View {
-        Text(attributedStringWithCurrentValueHighlighted(attributedString: attributedString))
-            .font(.custom("Manrope", size: 16))
-            .foregroundColor(.black)
-            .textSelection(.enabled)
-    }
-}
-
-// MARK: Back Button
-struct BackButton: View {
-    var title: String = "Back"
-    var systemImage: String = "chevron.left"
-    var action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: systemImage)
-                Text(title)
-                    .font(.custom("PPWoodland-Bold", size: 14))
-            }
-            .padding(8)
-            .frame(minWidth: 80)
-            .background(Color.white)
-            .foregroundColor(.black)
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(isHovering ? 0.3 : 0.2), radius: isHovering ? 8 : 6, x: 0, y: 3)
-            .scaleEffect(isHovering ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: isHovering)
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            self.isHovering = hovering
-        }
-    }
-}
-
-// MARK: Solid Button with optional disabled state
-struct SolidButton: View {
-    let title: String
-    let systemImage: String
-    let bgColor: Color
-    let action: () -> Void
-    var isDisabled: Bool = false   // NEW
-    
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: {
-            if !isDisabled {
-                action()
-            }
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                Text(title)
-                    .font(.custom("Manrope", size: 16))
-            }
-            .padding()
-            .frame(width: 200, height: 50)
-            .background(isDisabled ? Color.gray : bgColor)
-            .foregroundColor(.white.opacity(isDisabled ? 0.7 : 1.0))
-            .cornerRadius(18)
-            .shadow(color: .black.opacity(isHovering ? 0.3 : 0.2), radius: isHovering ? 8 : 6, x: 0, y: 3)
-            .scaleEffect(isHovering && !isDisabled ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: isHovering)
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            self.isHovering = hovering
-        }
-        .disabled(isDisabled)
     }
 }

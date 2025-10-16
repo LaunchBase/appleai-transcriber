@@ -9,7 +9,7 @@ struct ContentView: View {
         ZStack {
             // MARK: Background Color
             Color("mp-purple")
-                .ignoresSafeArea()                .ignoresSafeArea()
+                .ignoresSafeArea()
             
             VStack(spacing: 40) {
                 if showLiveTranscription {

@@ -37,7 +37,6 @@ struct RecordingTranscribeView: View {
                     .padding(.horizontal, 40)
             }
             .padding(.top, 20)
-            
                         
             // MARK: File Upload Section
             VStack(spacing: 20) {
@@ -126,7 +125,6 @@ struct RecordingTranscribeView: View {
                     transcript = finalized + volatile
                 }
             }
-
             await MainActor.run {
                 isTranscribing = false
             }
