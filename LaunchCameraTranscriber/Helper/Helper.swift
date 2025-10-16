@@ -9,20 +9,19 @@ import Foundation
 import AVFoundation
 import SwiftUI
 
-
 enum TranscriptionState {
     case transcribing
     case notTranscribing
 }
 
-public enum TranscriptionError: Error{
+public enum TranscriptionError: Error {
     case cantDownloadModel
     case faledToSetupRecognitionStream
     case invalidAudioDataType
     case localeNotSupported
     
     var descriptionString: String {
-        switch self{
+        switch self {
         case .cantDownloadModel:
             return "Can't download the model"
         case .faledToSetupRecognitionStream:
@@ -51,12 +50,31 @@ public struct AudioData: @unchecked Sendable {
     var time: AVAudioTime
 }
 
+/// Split AttributedString into lines by sentence while preserving attributes
+func splitTranscriptionIntoLines(_ attributedString: AttributedString) -> [AttributedString] {
+    var lines: [AttributedString] = []
+    let string = String(attributedString.characters)
+
+    string.enumerateSubstrings(in: string.startIndex..<string.endIndex, options: .bySentences) { (substring, substringRange, _, _) in
+        guard let substring = substring?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !substring.isEmpty
+        else { return }
+
+        // Map Swift String range to AttributedString range
+        if let attrRange = attributedString.range(of: substring, options: .literal, locale: nil) {
+            let line = AttributedString(attributedString[attrRange]) // convert AttributedSubstring to AttributedString
+            lines.append(line)
+        }
+    }
+
+    return lines
+}
 
 
 extension AVAudioPlayerNode {
     var currentTime: TimeInterval {
-        guard let nodeTime: AVAudioTime = self.lastRenderTime, let playerTime: AVAudioTime = self.playerTime(forNodeTime: nodeTime) else { return 0 }
-        
+        guard let nodeTime: AVAudioTime = self.lastRenderTime,
+              let playerTime: AVAudioTime = self.playerTime(forNodeTime: nodeTime) else { return 0 }
         return Double(playerTime.sampleTime) / playerTime.sampleRate
     }
 }
