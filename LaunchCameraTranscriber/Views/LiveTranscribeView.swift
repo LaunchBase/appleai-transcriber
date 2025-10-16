@@ -30,7 +30,7 @@ struct LiveTranscribeView: View {
                 BackButton(action: onBack)
                 Spacer()
             }
-
+            
             // MARK: Title
             Text("Live Transcription")
                 .font(.custom("PPWoodland-Bold", size: 28))
@@ -65,16 +65,13 @@ struct LiveTranscribeView: View {
                 )
             }
             .padding(.bottom, 10)
-
+            
             // MARK: Transcript ScrollView
             if let speechTranscriber {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 6) { // spacing between lines
-                        let fullTranscript = speechTranscriber.finalizedTranscript + speechTranscriber.volatileTranscript
-                        let lines = splitAttributedStringIntoLines(fullTranscript)
-
-                        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                            Text(line)
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(splitTranscriptionIntoLines(speechTranscriber.finalizedTranscript + speechTranscriber.volatileTranscript), id: \.self) { line in
+                            Text(attributedStringWithCurrentValueHighlighted(line))
                                 .font(.custom("Manrope", size: 16))
                                 .foregroundColor(.white)
                                 .textSelection(.enabled)
@@ -91,6 +88,7 @@ struct LiveTranscribeView: View {
                         .stroke(Color.white.opacity(0.15), lineWidth: 1)
                 )
             }
+            
             Spacer()
         }
         .padding()
@@ -150,7 +148,7 @@ struct LiveTranscribeView: View {
     }
 
     // MARK: Text Highlighting
-    func attributedStringWithCurrentValueHighlighted(attributedString: AttributedString) -> AttributedString {
+    func attributedStringWithCurrentValueHighlighted(_ attributedString: AttributedString) -> AttributedString {
         var copy = attributedString
         copy.runs.forEach { run in
             if shouldBeHighlighted(attributedStringRun: run) {
@@ -160,7 +158,7 @@ struct LiveTranscribeView: View {
         }
         return copy
     }
-
+    
     func shouldBeHighlighted(attributedStringRun: AttributedString.Runs.Run) -> Bool {
         guard isPlaying else { return false }
         let start = attributedStringRun.audioTimeRange?.start.seconds
