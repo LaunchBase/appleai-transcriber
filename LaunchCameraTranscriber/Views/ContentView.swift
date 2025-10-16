@@ -13,9 +13,13 @@ struct ContentView: View {
             
             VStack(spacing: 40) {
                 if showLiveTranscription {
-                    LiveTranscribeView()
+                    LiveTranscribeView {
+                        showLiveTranscription = false
+                    }
                 } else if showRecordingTranscription {
-                    RecordingTranscribeView()
+                    RecordingTranscribeView {
+                        showRecordingTranscription = false
+                    }
                 } else {
                     mainMenu
                 }
@@ -105,7 +109,8 @@ struct TranscribeButton: View {
             .background(
                 RoundedRectangle(cornerRadius: 18)
                 .fill(Color("gainsboro"))
-            )             .overlay(
+            )
+            .overlay(
                 RoundedRectangle(cornerRadius: 18)
                     .stroke(Color.white.opacity(0.15), lineWidth: 1)
             )

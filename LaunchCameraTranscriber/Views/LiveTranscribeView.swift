@@ -10,6 +10,8 @@ import AVFoundation
 import Speech
 
 struct LiveTranscribeView: View {
+    var onBack: () -> Void
+    
     @State var lecture: Lecture = Lecture.create()
     @State var isRecording = false
     @State var isPlaying = false
@@ -17,51 +19,76 @@ struct LiveTranscribeView: View {
     @State private var recorder: AudioRecorder!
     @State private var speechTranscriber: LectureTranscriber!
 
-    @State var downloadProgress = 0.0
     @State var currentPlaybackTime = 0.0
     @State var timer: Timer?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // MARK: Buttons
+        VStack(spacing: 20) {
+            
+            // MARK: Top Bar with Back Button
             HStack {
-                Button {
-                    handleRecordingButtonTap()
-                } label: {
-                    Label(isRecording ? "Stop Recording" : "Start Recording",
-                          systemImage: isRecording ? "stop.circle.fill" : "record.circle")
-                        .font(.headline)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(isRecording ? .red : .green)
-                .keyboardShortcut(.space, modifiers: [])
-
-                Button {
-                    handlePlayButtonTap()
-                } label: {
-                    Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.headline)
-                }
-                .buttonStyle(.bordered)
-                .tint(.blue)
+                BackButton(action: onBack)
+                Spacer()
             }
+
+            // MARK: Title
+            Text("Live Transcription")
+                .font(.custom("PPWoodland-Bold", size: 28))
+                .foregroundColor(.white)
+                .padding(.top, 8)
+            
+            // MARK: Control Buttons
+            HStack(spacing: 24) {
+                // Recording Button
+                SolidButton(
+                    title: isRecording ? "Stop Recording" : "Start Recording",
+                    systemImage: isRecording ? "stop.circle.fill" : "record.circle",
+                    bgColor: isRecording ? .red : .green, // use bgColor
+                    action: handleRecordingButtonTap
+                )
+                
+                // Play Button (disabled while recording)
+                SolidButton(
+                    title: isPlaying ? "Stop" : "Play",
+                    systemImage: isPlaying ? "stop.fill" : "play.fill",
+                    bgColor: .blue, // must match struct param name
+                    action: handlePlayButtonTap,
+                    isDisabled: isRecording // disables while recording
+                )
+            }
+
             .padding(.bottom, 10)
 
-            // MARK: Transcript ScrollView with highlighting
+            // MARK: Transcript ScrollView
+            // MARK: Transcript ScrollView
             if let speechTranscriber {
-                textScrollView(attributedString: speechTranscriber.finalizedTranscript + speechTranscriber.volatileTranscript)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(NSColor.textBackgroundColor))
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gray.opacity(0.3))
-                    )
-            }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) { // spacing between lines
+                        let fullTranscript = speechTranscriber.finalizedTranscript + speechTranscriber.volatileTranscript
+                        let lines = splitAttributedStringIntoLines(fullTranscript)
 
+                        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(.custom("Manrope", size: 16))
+                                .foregroundColor(.white)
+                                .lineSpacing(4)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .padding()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color("gainsboro"))
+                .cornerRadius(18)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+            }
             Spacer()
         }
         .padding()
+        .background(Color("mp-purple").ignoresSafeArea())
         .onAppear {
             if speechTranscriber == nil {
                 let transcriber = LectureTranscriber(lecture: $lecture)
@@ -75,6 +102,7 @@ struct LiveTranscribeView: View {
         }
     }
 
+    // MARK: Playback / Recording
     func handlePlayback() {
         guard lecture.file_url != nil else { return }
 
@@ -117,18 +145,7 @@ struct LiveTranscribeView: View {
         isPlaying.toggle()
     }
 
-    // MARK: Text ScrollView + Highlighting
-    @ViewBuilder
-    func textScrollView(attributedString: AttributedString) -> some View {
-        ScrollView {
-            VStack(alignment: .leading) {
-                textWithHighlighting(attributedString: attributedString)
-                Spacer()
-            }
-            .padding()
-        }
-    }
-
+    // MARK: Text Highlighting
     func attributedStringWithCurrentValueHighlighted(attributedString: AttributedString) -> AttributedString {
         var copy = attributedString
         copy.runs.forEach { run in
@@ -151,7 +168,77 @@ struct LiveTranscribeView: View {
     @ViewBuilder
     func textWithHighlighting(attributedString: AttributedString) -> some View {
         Text(attributedStringWithCurrentValueHighlighted(attributedString: attributedString))
-            .font(.title3)
+            .font(.custom("Manrope", size: 16))
+            .foregroundColor(.black)
             .textSelection(.enabled)
+    }
+}
+
+// MARK: Back Button
+struct BackButton: View {
+    var title: String = "Back"
+    var systemImage: String = "chevron.left"
+    var action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                Text(title)
+                    .font(.custom("PPWoodland-Bold", size: 14))
+            }
+            .padding(8)
+            .frame(minWidth: 80)
+            .background(Color.white)
+            .foregroundColor(.black)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(isHovering ? 0.3 : 0.2), radius: isHovering ? 8 : 6, x: 0, y: 3)
+            .scaleEffect(isHovering ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isHovering)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            self.isHovering = hovering
+        }
+    }
+}
+
+// MARK: Solid Button with optional disabled state
+struct SolidButton: View {
+    let title: String
+    let systemImage: String
+    let bgColor: Color
+    let action: () -> Void
+    var isDisabled: Bool = false   // NEW
+    
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: {
+            if !isDisabled {
+                action()
+            }
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                Text(title)
+                    .font(.custom("Manrope", size: 16))
+            }
+            .padding()
+            .frame(width: 200, height: 50)
+            .background(isDisabled ? Color.gray : bgColor)
+            .foregroundColor(.white.opacity(isDisabled ? 0.7 : 1.0))
+            .cornerRadius(18)
+            .shadow(color: .black.opacity(isHovering ? 0.3 : 0.2), radius: isHovering ? 8 : 6, x: 0, y: 3)
+            .scaleEffect(isHovering && !isDisabled ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isHovering)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            self.isHovering = hovering
+        }
+        .disabled(isDisabled)
     }
 }
